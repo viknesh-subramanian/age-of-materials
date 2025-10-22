@@ -15,7 +15,12 @@ A Next.js application to track your purchases and monitor how long you've owned 
 - Next.js 15 (App Router)
 - TypeScript
 - Tailwind CSS
-- JSON file storage
+- Supabase (PostgreSQL database)
+- Deployed on Vercel
+
+## Live Demo
+
+**[https://purchase-tracker-sand.vercel.app/](https://purchase-tracker-sand.vercel.app/)**
 
 ## Getting Started
 
@@ -23,6 +28,7 @@ A Next.js application to track your purchases and monitor how long you've owned 
 
 - Node.js 18+ installed
 - npm or yarn package manager
+- A free Supabase account ([supabase.com](https://supabase.com))
 
 ### Installation
 
@@ -31,12 +37,29 @@ A Next.js application to track your purchases and monitor how long you've owned 
 npm install
 ```
 
-2. Run the development server:
+2. Set up Supabase database:
+   - Follow the complete setup guide in **[SUPABASE_SETUP.md](./SUPABASE_SETUP.md)**
+   - Create a Supabase project
+   - Run the SQL schema
+   - Get your API credentials
+
+3. Create a `.env.local` file in the project root:
+```bash
+cp .env.local.example .env.local
+```
+
+4. Add your Supabase credentials to `.env.local`:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+5. Run the development server:
 ```bash
 npm run dev
 ```
 
-3. Open [http://localhost:3000](http://localhost:3000) in your browser
+6. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## Usage
 
@@ -66,7 +89,13 @@ npm run dev
 
 ## Data Storage
 
-All purchase data is stored in `data/purchases.json`. The file is automatically created and updated through the application.
+All purchase data is stored in a **Supabase PostgreSQL database**, providing:
+- ✅ Persistent storage (data survives deployments)
+- ✅ Automatic backups
+- ✅ Scalability
+- ✅ Real-time capabilities
+
+See [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) for setup instructions.
 
 ## Project Structure
 
@@ -82,11 +111,14 @@ age-of-materials/
 │   ├── PurchaseForm.tsx        # Form for add/edit
 │   └── PurchaseModal.tsx       # Modal for viewing details
 ├── lib/
-│   └── duration.ts             # Duration calculation utilities
+│   ├── duration.ts             # Duration calculation utilities
+│   └── supabase.ts             # Supabase client configuration
 ├── types/
 │   └── purchase.ts             # TypeScript interfaces
-└── data/
-    └── purchases.json          # JSON data storage
+├── supabase/
+│   └── schema.sql              # Database schema
+├── SUPABASE_SETUP.md           # Supabase setup guide
+└── .env.local.example          # Environment variables template
 ```
 
 ## Duration Calculation

@@ -1,15 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
-import { Purchase } from '@/types/purchase';
-
-const dataFilePath = path.join(process.cwd(), 'data', 'purchases.json');
+import { supabase } from '@/lib/supabase';
 
 // GET all purchases
 export async function GET() {
   try {
-    const fileContents = await fs.readFile(dataFilePath, 'utf8');
-    const purchases: Purchase[] = JSON.parse(fileContents);
+    const { data, error } = await supabase
+      .from('purchases')
+      .select('*')
+      .order('date_of_purchase', { ascending: false });
+
+    if (error) {
+      console.error('Error reading purchases:', error);
+      return NextResponse.json({ error: 'Failed to read purchases' }, { status: 500 });
+    }
+
+    // Transform database response to match frontend format
+    const purchases = data.map((item) => ({
+      id: item.id,
+      name: item.name,
+      amount: parseFloat(item.amount),
+      dateOfPurchase: item.date_of_purchase,
+    }));
+
     return NextResponse.json(purchases);
   } catch (error) {
     console.error('Error reading purchases:', error);
@@ -30,18 +42,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const fileContents = await fs.readFile(dataFilePath, 'utf8');
-    const purchases: Purchase[] = JSON.parse(fileContents);
+    const { data, error } = await supabase
+      .from('purchases')
+      .insert([
+        {
+          name,
+          amount: parseFloat(amount),
+          date_of_purchase: dateOfPurchase,
+        },
+      ])
+      .select()
+      .single();
 
-    const newPurchase: Purchase = {
-      id: Date.now().toString(),
-      name,
-      amount: parseFloat(amount),
-      dateOfPurchase,
+    if (error) {
+      console.error('Error creating purchase:', error);
+      return NextResponse.json({ error: 'Failed to create purchase' }, { status: 500 });
+    }
+
+    // Transform database response to match frontend format
+    const newPurchase = {
+      id: data.id,
+      name: data.name,
+      amount: parseFloat(data.amount),
+      dateOfPurchase: data.date_of_purchase,
     };
-
-    purchases.push(newPurchase);
-    await fs.writeFile(dataFilePath, JSON.stringify(purchases, null, 2));
 
     return NextResponse.json(newPurchase, { status: 201 });
   } catch (error) {
