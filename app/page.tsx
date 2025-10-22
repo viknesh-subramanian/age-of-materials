@@ -171,7 +171,7 @@ export default function Home() {
                       {purchase.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      ${purchase.amount.toFixed(2)}
+                      ₹{purchase.amount.toFixed(2)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {new Date(purchase.dateOfPurchase).toLocaleDateString()}
