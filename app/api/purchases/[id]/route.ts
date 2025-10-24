@@ -1,13 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-server';
 
-// GET single purchase by ID
+// GET single purchase by ID (user can only get their own purchases)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = await createClient();
+
+    // Get authenticated user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
+
+    // RLS policies will automatically filter by user_id
     const { data, error } = await supabase
       .from('purchases')
       .select('*')
@@ -33,12 +47,24 @@ export async function GET(
   }
 }
 
-// PUT update purchase by ID
+// PUT update purchase by ID (user can only update their own purchases)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = await createClient();
+
+    // Get authenticated user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
     const body = await request.json();
     const { name, amount, dateOfPurchase } = body;
@@ -48,6 +74,7 @@ export async function PUT(
     if (amount !== undefined) updateData.amount = parseFloat(amount);
     if (dateOfPurchase) updateData.date_of_purchase = dateOfPurchase;
 
+    // RLS policies will automatically ensure user can only update their own purchases
     const { data, error } = await supabase
       .from('purchases')
       .update(updateData)
@@ -56,7 +83,7 @@ export async function PUT(
       .single();
 
     if (error || !data) {
-      return NextResponse.json({ error: 'Purchase not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Purchase not found or unauthorized' }, { status: 404 });
     }
 
     // Transform database response to match frontend format
@@ -74,20 +101,34 @@ export async function PUT(
   }
 }
 
-// DELETE purchase by ID
+// DELETE purchase by ID (user can only delete their own purchases)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabase = await createClient();
+
+    // Get authenticated user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
+
+    // RLS policies will automatically ensure user can only delete their own purchases
     const { error } = await supabase
       .from('purchases')
       .delete()
       .eq('id', id);
 
     if (error) {
-      return NextResponse.json({ error: 'Purchase not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Purchase not found or unauthorized' }, { status: 404 });
     }
 
     return NextResponse.json({ message: 'Purchase deleted successfully' });

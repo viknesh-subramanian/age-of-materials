@@ -1,18 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase-browser';
 import { Purchase, PurchaseWithDuration } from '@/types/purchase';
 import { calculateDuration, formatDuration } from '@/lib/duration';
 import PurchaseForm from '@/components/PurchaseForm';
 import PurchaseModal from '@/components/PurchaseModal';
+import type { User } from '@supabase/supabase-js';
 
 export default function Home() {
   const [purchases, setPurchases] = useState<PurchaseWithDuration[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [viewingPurchase, setViewingPurchase] = useState<PurchaseWithDuration | null>(null);
+  const router = useRouter();
+  const supabase = createClient();
 
   // Fetch purchases
   const fetchPurchases = async () => {
@@ -34,8 +40,25 @@ export default function Home() {
   };
 
   useEffect(() => {
+    // Get current user
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+
     fetchPurchases();
-  }, []);
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (!session) {
+        router.push('/login');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [router, supabase.auth]);
 
   // Create purchase
   const handleCreate = async (purchase: Omit<Purchase, 'id'>) => {
@@ -111,6 +134,13 @@ export default function Home() {
     setIsFormOpen(true);
   };
 
+  // Logout handler
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -122,6 +152,20 @@ export default function Home() {
   return (
     <main className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
+        {/* User Header */}
+        <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+          <div>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Logged in as</p>
+            <p className="text-lg font-medium text-gray-900 dark:text-white">{user?.email}</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          >
+            Logout
+          </button>
+        </div>
+
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">Purchase Tracker</h1>
           <button

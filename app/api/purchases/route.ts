@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-server';
 
-// GET all purchases
+// GET all purchases for authenticated user
 export async function GET() {
   try {
+    const supabase = await createClient();
+
+    // Get authenticated user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Fetch purchases for the authenticated user
+    // RLS policies will automatically filter by user_id
     const { data, error } = await supabase
       .from('purchases')
       .select('*')
@@ -29,9 +43,21 @@ export async function GET() {
   }
 }
 
-// POST create new purchase
+// POST create new purchase for authenticated user
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+
+    // Get authenticated user
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { name, amount, dateOfPurchase } = body;
 
@@ -42,6 +68,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Insert purchase with user_id
     const { data, error } = await supabase
       .from('purchases')
       .insert([
@@ -49,6 +76,7 @@ export async function POST(request: NextRequest) {
           name,
           amount: parseFloat(amount),
           date_of_purchase: dateOfPurchase,
+          user_id: user.id,
         },
       ])
       .select()
